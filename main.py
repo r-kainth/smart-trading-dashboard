@@ -5,7 +5,7 @@ from utils.indicators import add_technical_indicators
 
 st.set_page_config(page_title="Smart Trading Dashboard", layout="wide")
 st.title("📈 Smart Trading Dashboard")
-st.write("Welcome to your AI-powered stock analysis tool. Enter a ticker below to view advanced technical analysis, momentum indicators, and risk management data.") # <-- Added back!
+st.write("Welcome to your AI-powered stock analysis tool. Enter a ticker below to view advanced technical analysis, momentum indicators, and risk management data to support your next trade!") 
 
 # Create 3 columns for our user inputs so they sit nicely side-by-side
 col1, col2, col3 = st.columns(3)
@@ -54,7 +54,7 @@ if ticker:
         
         # 3. Create and show the massive chart
         fig = create_candlestick_chart(analyzed_data, ticker)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
         
         with st.expander("View Analyzed Data Table"):
             st.dataframe(analyzed_data)
