@@ -102,8 +102,65 @@ if ticker:
         m4.metric("RSI (14)", f"{latest_rsi:.1f}", rsi_state, delta_color=delta_color, delta_arrow=delta_arrow) 
         m5.metric("SMA 20", f"${latest_sma20:.2f}", sma_state)
         
+        
+        # ==========================================
+        # 🧮 SMART TRADE PLANNER (SIDEBAR)
+        # ==========================================
+        # 1. We initialize a session state variable to "remember" our trade levels
+        if 'trade_levels' not in st.session_state:
+            st.session_state.trade_levels = None
+
+        st.sidebar.header("🧮 Smart Trade Planner")
+        st.sidebar.write("Plan your position sizing using AI defaults or custom levels.")
+
+        account_size = st.sidebar.number_input("Account Size ($)", min_value=100.0, value=10000.0, step=100.0)
+        risk_pct = st.sidebar.slider("Account Risk (%)", min_value=0.5, max_value=25.0, value=2.0, step=0.1)
+
+        st.sidebar.markdown("---")
+
+        custom_entry = st.sidebar.number_input("Entry Price ($)", min_value=0.01, value=float(latest_close), step=0.50)
+        
+        default_stop = float(analyzed_data['BB_lower'].iloc[-1]) if not pd.isna(analyzed_data['BB_lower'].iloc[-1]) else float(latest_close * 0.95)
+        if default_stop >= custom_entry: default_stop = custom_entry * 0.98 
+        custom_stop = st.sidebar.number_input("Stop Loss ($)", min_value=0.01, value=default_stop, step=0.50)
+        
+        # NOTE: We temporarily default the target to a 2:1 RR since the ML model hasn't run yet in the code sequence
+        default_target = float(custom_entry + ((custom_entry - custom_stop) * 2))
+        custom_target = st.sidebar.number_input("Target Price ($)", min_value=0.01, value=default_target, step=0.50)
+
+        if st.sidebar.button("Calculate Position", use_container_width=True, type="primary"):
+            results, error = calculate_trade_risk(account_size, risk_pct, custom_entry, custom_stop, custom_target)
+            
+            if error:
+                st.sidebar.error(error)
+                st.session_state.trade_levels = None # Clear chart lines on error
+            else:
+                st.sidebar.success(f"**Buy {results['shares']:,} Shares**")
+                
+                c1, c2 = st.sidebar.columns(2)
+                c1.metric("Total Capital", f"${results['position_size']:,.2f}")
+                c2.metric("Max Risk", f"${results['dollar_risk']:,.2f}")
+                
+                c3, c4 = st.sidebar.columns(2)
+                c3.metric("Est. Profit", f"${results['expected_profit']:,.2f}")
+                c4.metric("R/R Ratio", f"{results['rr_ratio']:.2f}x")
+                
+                if results['position_size'] > account_size:
+                    st.sidebar.warning("⚠️ Warning: Position size exceeds account balance (Requires Margin).")
+                
+                # SAVE THE LEVELS TO MEMORY SO THE CHART CAN DRAW THEM!
+                st.session_state.trade_levels = {
+                    'entry': custom_entry,
+                    'stop': custom_stop,
+                    'target': custom_target
+                }
+                
+        if st.sidebar.button("Clear Chart Lines", use_container_width=True):
+            st.session_state.trade_levels = None
+
         # --- THE MAIN CHART ---
-        fig = create_candlestick_chart(analyzed_data, ticker)
+        # Notice we now pass our saved trade_levels into the chart function!
+        fig = create_candlestick_chart(analyzed_data, ticker, trade_levels=st.session_state.trade_levels)
         st.plotly_chart(fig, width='stretch')
 
         # ==========================================
@@ -222,59 +279,6 @@ if ticker:
         else:
             st.write("No recent news articles found for this ticker.")
 
-        # ==========================================
-        # 🧮 SMART TRADE PLANNER (SIDEBAR)
-        # ==========================================
-        st.sidebar.header("🧮 Intelligent Trading Risk Management Calculator")
-        st.sidebar.write("Plan your position sizing using AI defaults or custom levels. Take the risk out of risk management.")
-
-        # --- Base Account Inputs ---
-        account_size = st.sidebar.number_input("Account Size ($)", min_value=100.0, value=10000.0, step=100.0)
-        risk_pct = st.sidebar.slider("Account Risk (%)", min_value=0.5, max_value=20.0, value=2.0, step=0.1)
-
-        st.sidebar.markdown("---")
-
-        # --- Trade Inputs (With Smart Auto-Fill!) ---
-        # Default Entry is the current price
-        custom_entry = st.sidebar.number_input("Entry Price ($)", min_value=0.01, value=float(latest_close), step=0.50)
-        
-        # Default Stop Loss is placed slightly below the Lower Bollinger Band or a fixed % down
-        default_stop = float(analyzed_data['BB_lower'].iloc[-1]) if not pd.isna(analyzed_data['BB_lower'].iloc[-1]) else float(latest_close * 0.95)
-        # Ensure stop loss is strictly less than entry so it doesn't crash on start
-        if default_stop >= custom_entry: default_stop = custom_entry * 0.98 
-        custom_stop = st.sidebar.number_input("Stop Loss ($)", min_value=0.01, value=default_stop, step=0.50)
-        
-        # Default Target is the AI prediction (if available and bullish), otherwise a standard 2:1 ratio
-        if prediction is not None and prediction > custom_entry:
-            default_target = float(prediction)
-        else:
-            # Standard 2:1 Reward/Risk ratio
-            default_target = float(custom_entry + ((custom_entry - custom_stop) * 2))
-            
-        custom_target = st.sidebar.number_input("Target Price ($)", min_value=0.01, value=default_target, step=0.50)
-
-        # --- Calculation Button ---
-        if st.sidebar.button("Calculate Position", use_container_width=True, type="primary"):
-            results, error = calculate_trade_risk(account_size, risk_pct, custom_entry, custom_stop, custom_target)
-            
-            if error:
-                st.sidebar.error(error)
-            else:
-                st.sidebar.success(f"**Buy {results['shares']:,} Shares**")
-                
-                # Display metrics cleanly
-                c1, c2 = st.sidebar.columns(2)
-                c1.metric("Total Capital Required", f"${results['position_size']:,.2f}")
-                c2.metric("Max Risk", f"${results['dollar_risk']:,.2f}")
-                
-                c3, c4 = st.sidebar.columns(2)
-                c3.metric("Est. Profit", f"${results['expected_profit']:,.2f}")
-                c4.metric("R/R Ratio", f"{results['rr_ratio']:.2f}x")
-                
-                # Dynamic warning if capital required is greater than account size
-                if results['position_size'] > account_size:
-                    st.sidebar.warning("⚠️ Warning: Position size exceeds account balance (Requires Margin/Leverage).")
-
         # --- BOTTOM TABS ---
         st.markdown("---")
         tab1, tab2, tab3 = st.tabs(["Company Profile", "Financial Summary", "Raw Data Table"])
@@ -310,5 +314,5 @@ if ticker:
                 st.write("Financial summary data not available.")
                 
         with tab3:
-            st.write("Here's the raw historical data, respective of the time period and candle interval shown in the chart, with technical indicators added:")
+            st.write("Raw historical data, respective of the time period and candle interval shown in the chart, with technical indicators:")
             st.dataframe(analyzed_data)

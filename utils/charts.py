@@ -1,7 +1,7 @@
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-def create_candlestick_chart(df, ticker):
+def create_candlestick_chart(df, ticker, trade_levels=None):
     fig = make_subplots(
         rows=4, cols=1, shared_xaxes=True, 
         vertical_spacing=0.04, # Increased slightly for cleaner separation
@@ -19,6 +19,15 @@ def create_candlestick_chart(df, ticker):
         fig.add_trace(go.Scatter(x=df.index, y=df['SMA_50'], line=dict(color='orange', width=1), name='SMA 50'), row=1, col=1)
         fig.add_trace(go.Scatter(x=df.index, y=df['BB_upper'], line=dict(color='gray', width=1, dash='dot'), name='Upper BB'), row=1, col=1)
         fig.add_trace(go.Scatter(x=df.index, y=df['BB_lower'], line=dict(color='gray', width=1, dash='dot'), fill='tonexty', fillcolor='rgba(128,128,128,0.1)', name='Lower BB'), row=1, col=1)
+
+    # --- NEW: DRAW TRADE LEVELS ---
+    if trade_levels:
+        # Green dashed line for Target
+        fig.add_hline(y=trade_levels['target'], line_dash="dash", line_color="#00FF00", annotation_text="Target", annotation_position="top left", row=1, col=1)
+        # Blue dashed line for Entry
+        fig.add_hline(y=trade_levels['entry'], line_dash="dash", line_color="#00BFFF", annotation_text="Entry", annotation_position="top left", row=1, col=1)
+        # Red dashed line for Stop Loss
+        fig.add_hline(y=trade_levels['stop'], line_dash="dash", line_color="#FF0000", annotation_text="Stop Loss", annotation_position="top left", row=1, col=1)
 
     # ROW 2: Volume (Hidden from all legends)
     colors = ['green' if row['Close'] >= row['Open'] else 'red' for index, row in df.iterrows()]
