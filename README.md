@@ -22,7 +22,7 @@ ML Price Prediction and AI Briefing Section:
 <img width="434" height="875" alt="image" src="https://github.com/user-attachments/assets/52a34447-b460-4b82-846f-45fb611ba204" />
 
 
-Trade Planner Targets shown on chart:
+Trade Planner lines/levels shown on chart:
 
 <img width="2493" height="1229" alt="image" src="https://github.com/user-attachments/assets/c16bbc88-b394-46ef-8d30-fb679227fbc4" />
 
