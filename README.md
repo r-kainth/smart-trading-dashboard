@@ -73,7 +73,7 @@ intelligent-trading-dashboard-risk-calculator/
 
 **1. Clone the repository:**
 ```bash
-git clone [https://github.com/r-kainth/intelligent-trading-dashboard-risk-calculator.git](https://github.com/r-kainth/intelligent-trading-dashboard-risk-calculator.git)
+git clone https://github.com/r-kainth/intelligent-trading-dashboard-risk-calculator.git
 cd intelligent-trading-dashboard-risk-calculator
 ```
 
